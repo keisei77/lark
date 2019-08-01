@@ -1,0 +1,94 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2
+
+defaults: &defaults
+  working_directory: ~/lark
+  docker:
+    - image: circleci/openjdk:8-jdk-node-browsers
+
+aliases:
+  - &docker
+    - image: circleci/openjdk:8-jdk-node-browsers
+
+  - &restore_yarn_cache
+    restore_cache:
+      name: Restore node_modules cache
+      keys:
+        - v1-node-{{ arch }}-{{ .Branch }}-{{ checksum "yarn.lock" }}
+        - v1-node-{{ arch }}-{{ .Branch }}-
+        - v1-node-{{ arch }}-
+
+  - &run_yarn
+    run:
+      name: Install Packages
+      command: yarn --frozen-lockfile
+
+jobs:
+  test:
+    <<: *defaults
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}.
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run: npm install
+      - run:
+          name: Run tests
+          command: yarn test --maxWorkers=2
+
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+      - persist_to_workspace:
+          root: ~/lark
+          paths: .
+
+  deploy:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/lark
+      - run:
+          name: Authenticate with registry
+          command: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/lark/.npmrc
+      - run:
+          name: Publish package
+          command: npm publish --access=public
+
+  build:
+    docker: *docker
+    steps:
+      - checkout
+      - *restore_yarn_cache
+      - *run_yarn
+      - run: yarn build
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+workflows:
+  version: 2
+  test-deploy:
+    jobs:
+      - test:
+          filters:
+            tags:
+              only: /^v.*/
+      - deploy:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
