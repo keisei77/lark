@@ -1,0 +1,15 @@
+// tsconfig.json
+// assuming your ts sources are in ./src/
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "lib": ["es2017", "es7", "es6", "dom"],
+    "declaration": true,
+    "outDir": "lib",
+    "strict": true,
+    "esModuleInterop": true
+  },
+  "include": ["src", "__test__"],
+  "exclude": ["node_modules", "lib"]
+}
