@@ -1,0 +1,6 @@
+.vscode
+.cache
+dist/
+lib/
+.nyc*
+node_modules
